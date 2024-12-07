@@ -24,7 +24,8 @@ export default function TabLayout() {
           },
           default: {},
         }),
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="home" // This matches the file name "home.tsx"
         options={{
@@ -32,13 +33,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="explore" // This matches the file name "explore.tsx"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
+      {/* Removed the "explore" tab */}
       <Tabs.Screen
         name="profile" // This matches the file name "profile.tsx"
         options={{
