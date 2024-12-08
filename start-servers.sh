@@ -8,7 +8,7 @@ npm start &
 BACKEND_PID=$!
 
 echo "Starting the iOS server..."
-cd ../frontend/CalCenterv2
+cd ../../frontend/CalCenterv2
 npm install
 npx expo start -i &
 FRONTEND_PID=$!
