@@ -7,6 +7,7 @@ const CalendarScreen = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [calories, setCalories] = useState(null);
   const [exerciseCalculation, setExerciseCalculation] = useState(null);
+  const [netCalories, setNetCalories] = useState(null);
 
   const handleDayPress = (day) => {
     const date = new Date(day.timestamp); // Needs to be a Date object for formatting
@@ -16,6 +17,9 @@ const CalendarScreen = () => {
     // Constants to show functionality
     setCalories(2000);
     setExerciseCalculation(500); // Calories burned (depending on DB format)
+
+    // This equation can be improved when we implement the functionality w/ DB
+    setNetCalories(calories - exerciseCalculation);
   };
 
   return (
@@ -37,6 +41,7 @@ const CalendarScreen = () => {
           <Text style={styles.label}>Selected Date: {selectedDate}</Text>
           <Text style={styles.label}>Caloric Intake: {calories !== null ? `${calories} kcal` : 'Loading...'}</Text>
           <Text style={styles.label}>Exercise Calculation: {exerciseCalculation !== null ? `${exerciseCalculation} kcal` : 'Loading...'}</Text>
+          <Text style={styles.label}>Net Daily Calories: {netCalories !== null ? `${netCalories} kcal` : 'Loading...'}</Text>
         </View>
       ) : (
         <Text style={styles.infoText}>Please select a date to view your data.</Text>
