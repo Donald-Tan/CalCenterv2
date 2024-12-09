@@ -19,6 +19,7 @@ const SignInScreen = ({ navigation }) => {
             if (response.data.success) {
                 // Stores returned data from JSON response
                 const { userID, firstName, lastName, email, dateOfBirth } = response.data.user;
+                console.log(userID);
                 await AsyncStorage.setItem('user', JSON.stringify({ userID, firstName, lastName, email, dateOfBirth }));
 
                 Alert.alert('Success', 'You are now signed in!');

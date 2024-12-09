@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ProfileScreen = () => {
   const [user, setUser] = useState({
+    userID: '',
     firstName: '',
     lastName: '',
     email: '',

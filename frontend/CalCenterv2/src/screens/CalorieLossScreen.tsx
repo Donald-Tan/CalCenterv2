@@ -1,194 +1,223 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  StyleSheet,
-  Button,
-  Alert,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Button, TextInput, StyleSheet, Alert } from 'react-native';
+import axios from 'axios';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-interface Exercise {
-  id: string;
-  name: string;
-  duration: number; // in hours
-  caloriesBurned: number;
+interface Activity {
+    ActivityID: number;
+    ActivityName: string;
+    CaloriesPerHour: number;
 }
 
-interface Food {
-  id: string;
-  name: string;
-  calories: number;
+interface LoggedActivity {
+    ActivityID: number;
+    Duration: number;
+    Date: string;
 }
 
-const CalorieLossScreen = ({ loggedFoods = [] }: { loggedFoods?: Food[] }) => {
-    const [exerciseName, setExerciseName] = useState('');
+const CalorieLossScreen = () => {
+    const [activities, setActivities] = useState<Activity[]>([]);
+    const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [exerciseDuration, setExerciseDuration] = useState('');
-    const [manualCaloriesBurned, setManualCaloriesBurned] = useState('');
-    const [loggedExercises, setLoggedExercises] = useState<Exercise[]>([]);
-  
-    // Simulated database of exercises with calories burned per hour
-    const exerciseDatabase: { [key: string]: number } = {
-      running: 600,
-      cycling: 400,
-      swimming: 500,
-    };
-  
-    const fetchExerciseCaloriesFromDatabase = (exerciseName: string): number | null => {
-      const lowerCaseExerciseName = exerciseName.toLowerCase();
-      return exerciseDatabase[lowerCaseExerciseName] ?? null;
-    };
-  
-    const handleAddExercise = () => {
-      if (!exerciseName || (!exerciseDuration && !manualCaloriesBurned)) {
-        Alert.alert('Error', 'Please enter exercise details and duration or calories burned.');
-        return;
-      }
-  
-      let caloriesBurned = 0;
-  
-      const duration = parseFloat(exerciseDuration);
-      if (isNaN(duration) && !manualCaloriesBurned) {
-        Alert.alert('Error', 'Please enter a valid exercise duration or calories burned.');
-        return;
-      }
-  
-      const caloriesFromDatabase = fetchExerciseCaloriesFromDatabase(exerciseName);
-  
-      if (caloriesFromDatabase !== null) {
-        caloriesBurned = caloriesFromDatabase * duration;
-      } else if (manualCaloriesBurned) {
-        caloriesBurned = parseFloat(manualCaloriesBurned);
-        if (isNaN(caloriesBurned)) {
-          Alert.alert('Error', 'Please enter valid manual calories burned.');
-          return;
+    const [loggedActivities, setLoggedActivities] = useState<LoggedActivity[]>([]);
+    const [user, setUser] = useState<{ userID: string }>({ userID: '' });
+
+    useEffect(() => {
+        const fetchUserData = async () => {
+            try {
+                const userData = await AsyncStorage.getItem('user');
+                if (userData) {
+                    const parsedData = JSON.parse(userData);
+                    setUser(parsedData);
+                }
+            } catch (error) {
+                Alert.alert('Error', 'Could not fetch user data');
+            }
+        };
+
+        const fetchActivities = async () => {
+            try {
+                const response = await axios.get('http://localhost:3000/activities');
+                setActivities(response.data.activities);
+            } catch (error) {
+                console.error('Error fetching activities:', error);
+                Alert.alert('Error', 'Failed to fetch activities. Please try again.');
+            }
+        };
+
+        fetchUserData().then(fetchActivities);
+    }, []);
+
+    useEffect(() => {
+        if (user.userID) {
+            const fetchLoggedActivities = async () => {
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    console.log(user.userID, today);
+                    const response = await axios.get('http://localhost:3000/activity-logs', {
+                        params: {
+                            userID: user.userID,
+                            date: today
+                        }
+                    });
+                    setLoggedActivities(response.data.loggedActivities); // Assuming this returns [{ActivityID, Duration, Date}, ...]
+                } catch (error) {
+                    console.error('Error fetching logged activities:', error);
+                    Alert.alert('Error', 'Failed to fetch logged activities. Please try again.');
+                }
+            };
+            fetchLoggedActivities();
         }
-      } else {
-        Alert.alert('Error', 'Please provide a valid exercise or manual calorie count.');
-        return;
-      }
-  
-      const newExercise: Exercise = {
-        id: Date.now().toString(),
-        name: exerciseName,
-        duration,
-        caloriesBurned,
-      };
-  
-      setLoggedExercises((prevExercises) => [...prevExercises, newExercise]);
-      setExerciseName('');
-      setExerciseDuration('');
-      setManualCaloriesBurned('');
+    }, [user.userID]);
+
+    const handleAddActivity = async () => {
+        if (!selectedActivity || !exerciseDuration) {
+            Alert.alert('Error', 'Please select an activity AND enter a duration.');
+            return;
+        }
+
+        const duration = parseFloat(exerciseDuration);
+        if (isNaN(duration) || duration <= 0) {
+            Alert.alert('Error', 'Please enter a valid duration.');
+            return;
+        }
+
+        // Calculate on client side
+        const caloriesBurned = selectedActivity.CaloriesPerHour * duration;
+
+        try {
+            await axios.post('http://localhost:3000/activity-logs', {
+                UserID: user.userID,
+                ActivityID: selectedActivity.ActivityID,
+                Date: new Date().toISOString().split('T')[0],
+                Duration: duration
+            });
+
+            // Update local state w/ server response
+            setLoggedActivities(prev => [
+                ...prev,
+                { ActivityID: selectedActivity.ActivityID, Duration: duration, Date: new Date().toISOString().split('T')[0] }
+            ]);
+
+            setSelectedActivity(null);
+            setExerciseDuration('');
+        } catch (error) {
+            console.error('Error adding activity to log:', error);
+            Alert.alert('Error', 'Failed to log the activity. Please try again.');
+        }
     };
-  
-    const totalCaloriesBurned = loggedExercises.reduce(
-      (sum, exercise) => sum + exercise.caloriesBurned,
-      0
-    );
-  
-    const totalCaloriesGained = loggedFoods.reduce(
-      (sum, food) => sum + food.calories,
-      0
-    );
-  
+
+    // Function to get the calories burned for a logged activity
+    const getCaloriesBurned = (activityID: number, duration: number): number => {
+        const activity = activities.find(a => a.ActivityID === activityID);
+        if (!activity) return 0;
+        return activity.CaloriesPerHour * duration;
+    };
+
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Calories Burned</Text>
-  
-        {/* Total calories burned */}
-        <Text style={styles.totalText}>Total Calories Burned: {totalCaloriesBurned} kcal</Text>
-  
-        {/* Total calories gained */}
-        <Text style={styles.totalText}>Total Calories Gained: {totalCaloriesGained} kcal</Text>
-  
-        {/* Input fields */}
-        <TextInput
-          style={styles.input}
-          placeholder="Enter exercise name"
-          value={exerciseName}
-          onChangeText={setExerciseName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Enter duration in hours"
-          value={exerciseDuration}
-          onChangeText={setExerciseDuration}
-          keyboardType="numeric"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Enter calories burned manually (optional)"
-          value={manualCaloriesBurned}
-          onChangeText={setManualCaloriesBurned}
-          keyboardType="numeric"
-        />
-        <Button title="Add Exercise" onPress={handleAddExercise} />
-  
-        {/* Logged exercises */}
-        <FlatList
-          data={loggedExercises}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Text style={styles.itemText}>
-              {item.name} ({item.duration} hr): {item.caloriesBurned} kcal
-            </Text>
-          )}
-          style={styles.list}
-        />
-  
-        <Text style={styles.sectionTitle}>Food Logged Today</Text>
-        <FlatList
-          data={loggedFoods}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Text style={styles.itemText}>
-              {item.name}: {item.calories} kcal
-            </Text>
-          )}
-          style={styles.list}
-        />
-      </View>
+        <View style={styles.container}>
+            <Text style={styles.title}>Log Activities</Text>
+
+            <FlatList
+                data={activities}
+                keyExtractor={(item) => item.ActivityID.toString()}
+                renderItem={({ item }) => (
+                    <TouchableOpacity
+                        style={[
+                            styles.activityItem,
+                            selectedActivity?.ActivityID === item.ActivityID && styles.selectedItem,
+                        ]}
+                        onPress={() => setSelectedActivity(item)}
+                    >
+                        <Text style={styles.activityText}>
+                            {item.ActivityName} ({item.CaloriesPerHour} kcal/hr)
+                        </Text>
+                    </TouchableOpacity>
+                )}
+                style={styles.list}
+                ListHeaderComponent={<Text style={styles.sectionTitle}>Activities</Text>}
+            />
+
+            {selectedActivity && (
+                <View style={styles.inputContainer}>
+                    <Text style={styles.sectionTitle}>Selected Activity: {selectedActivity.ActivityName}</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Enter duration in hours"
+                        value={exerciseDuration}
+                        onChangeText={setExerciseDuration}
+                        keyboardType="numeric"
+                    />
+                    <Button title="Log Activity" onPress={handleAddActivity} />
+                </View>
+            )}
+
+            <FlatList
+                data={loggedActivities}
+                keyExtractor={(_, index) => index.toString()}
+                renderItem={({ item }) => {
+                    const caloriesBurned = getCaloriesBurned(item.ActivityID, item.Duration);
+                    const activity = activities.find(a => a.ActivityID === item.ActivityID);
+                    return (
+                        <Text style={styles.itemText}>
+                            {activity ? activity.ActivityName : "Unknown Activity"}
+                            ({item.Duration} hr): {caloriesBurned} kcal
+                        </Text>
+                    );
+                }}
+                style={styles.list}
+                ListHeaderComponent={<Text style={styles.sectionTitle}>Logged Activities</Text>}
+            />
+        </View>
     );
-  };
-  
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#ffffff',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  totalText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginTop: 20,
-  },
-  input: {
-    height: 40,
-    borderColor: '#cccccc',
-    borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 10,
-    paddingHorizontal: 10,
-  },
-  itemText: {
-    fontSize: 18,
-    marginVertical: 5,
-  },
-  list: {
-    marginTop: 20,
-  },
+    container: {
+        flex: 1,
+        padding: 20,
+        backgroundColor: '#ffffff',
+    },
+    title: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        marginBottom: 20,
+    },
+    sectionTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        marginVertical: 10,
+    },
+    list: {
+        marginBottom: 20,
+    },
+    input: {
+        height: 40,
+        borderColor: '#cccccc',
+        borderWidth: 1,
+        borderRadius: 5,
+        marginBottom: 10,
+        paddingHorizontal: 10,
+    },
+    itemText: {
+        fontSize: 18,
+        marginVertical: 5,
+    },
+    inputContainer: {
+        marginBottom: 20,
+    },
+    activityItem: {
+        padding: 10,
+        borderRadius: 5,
+        backgroundColor: '#f0f0f0',
+        marginBottom: 10,
+    },
+    selectedItem: {
+        backgroundColor: '#d0f0c0',
+    },
+    activityText: {
+        fontSize: 18,
+    },
 });
 
 export default CalorieLossScreen;
