@@ -1,86 +1,99 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, StyleSheet, Image, ScrollView, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ProfileScreen = () => {
-  const [firstName, setFirstName] = useState('John');
-  const [lastName, setLastName] = useState('Doe');
-  const [email, setEmail] = useState('john.doe@example.com');
-  const [age, setAge] = useState('25');
-  const [weight, setWeight] = useState('70');
-  const [height, setHeight] = useState('175');
+  const [user, setUser] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    dateOfBirth: ''
+  });
 
-  const handleSave = () => {
-    // Handle saving the profile changes here
-    console.log('Profile saved:', { firstName, lastName, email, age, weight, height });
+  const [age, setAge] = useState(null);
+  // dateOfBirth will only be of type Date, so this should be defined or else we get an error
+  const ageCalc = (dateOfBirth: Date) => {
+    const today = new Date();
+    const birthday = new Date(dateOfBirth);
+
+    let age = today.getFullYear() - birthday.getFullYear();
+
+    // Check if birthday has happened yet this year
+    if (today.getMonth() < birthday.getMonth() ||
+        (today.getMonth() === birthday.getMonth() && today.getDate() <= birthday.getDate())) {
+      age = age - 1;
+    }
+    return age;
   };
 
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Image
-          source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} // Placeholder image
-          style={styles.avatar}
-        />
-        <Text style={styles.name}>{`${firstName} ${lastName}`}</Text>
-      </View>
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const parsedData = JSON.parse(userData);
+          setUser(parsedData);
 
-      <View style={styles.form}>
-        <View style={styles.row}>
-          <View style={styles.inputWrapper}>
-            <Text style={styles.label}>First Name</Text>
-            <TextInput
-              style={styles.input}
-              value={firstName}
-              onChangeText={setFirstName}
-            />
-          </View>
-          <View style={styles.inputWrapper}>
-            <Text style={styles.label}>Last Name</Text>
-            <TextInput
-              style={styles.input}
-              value={lastName}
-              onChangeText={setLastName}
-            />
-          </View>
+          const dateOfBirth = parsedData.dateOfBirth;
+          const simpleAge = ageCalc(dateOfBirth);
+          // @ts-ignore to setAge
+          setAge(simpleAge);
+        }
+      } catch (error) {
+        Alert.alert('Error', 'Could not fetch user data');
+      }
+    };
+    fetchUserData();
+  }, []);
+
+  // @ts-ignore
+  return (
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.header}>
+          <Image
+              source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} // Placeholder image
+              style={styles.avatar}
+          />
+          <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
         </View>
 
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-        />
+        <View style={styles.form}>
+          <View style={styles.row}>
+            <View style={styles.inputWrapper}>
+              <Text style={styles.label}>First Name</Text>
+              <TextInput
+                  style={styles.input}
+                  value={user.firstName}
+                  editable={false}
+              />
+            </View>
+            <View style={styles.inputWrapper}>
+              <Text style={styles.label}>Last Name</Text>
+              <TextInput
+                  style={styles.input}
+                  value={user.lastName}
+                  editable={false}
+              />
+            </View>
+          </View>
 
-        <Text style={styles.label}>Age</Text>
-        <TextInput
-          style={styles.input}
-          value={age}
-          onChangeText={setAge}
-          keyboardType="numeric"
-        />
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+              style={styles.input}
+              value={user.email}
+              editable={false}
+              keyboardType="email-address"
+          />
 
-        <Text style={styles.label}>Weight (kg)</Text>
-        <TextInput
-          style={styles.input}
-          value={weight}
-          onChangeText={setWeight}
-          keyboardType="numeric"
-        />
-
-        <Text style={styles.label}>Height (cm)</Text>
-        <TextInput
-          style={styles.input}
-          value={height}
-          onChangeText={setHeight}
-          keyboardType="numeric"
-        />
-
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Save Changes</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <Text style={styles.label}>Age</Text>
+          <TextInput
+              style={styles.input}
+              value={age !== null ? age.toString() : ''}
+              editable={false}
+              keyboardType="numeric"
+          />
+        </View>
+      </ScrollView>
   );
 };
 
@@ -143,18 +156,6 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flex: 1,
     marginRight: 10,
-  },
-  saveButton: {
-    backgroundColor: '#1abc9c', // Teal Green
-    paddingVertical: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  saveButtonText: {
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: 'bold',
   },
 });
 

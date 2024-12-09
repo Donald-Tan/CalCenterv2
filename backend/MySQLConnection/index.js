@@ -36,7 +36,18 @@ app.post('/login', (req, res) => {
 
     if (results.length > 0) {
       const user = results[0];
-      res.json({ success: true, message: 'Login successful', user });
+      // Returns all information that will be important for the profile tab on the UI
+      res.json({
+        success: true,
+        message: 'Login successful',
+        user: {
+          UserID: user.UserID,
+          firstName: user.Fname,
+          lastName: user.Lname,
+          email: user.Email,
+          dateOfBirth: user.DateOfBirth
+        },
+      });
     } else {
       res.status(401).json({ success: false, message: 'Invalid credentials' });
     }

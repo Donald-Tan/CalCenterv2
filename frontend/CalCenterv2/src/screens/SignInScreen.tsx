@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import {View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert} from 'react-native';
 import { AuthContext } from '@/App';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SignInScreen = ({ navigation }) => {
     const { signIn } = useContext(AuthContext);
@@ -16,6 +17,10 @@ const SignInScreen = ({ navigation }) => {
             });
 
             if (response.data.success) {
+                // Stores returned data from JSON response
+                const { userID, firstName, lastName, email, dateOfBirth } = response.data.user;
+                await AsyncStorage.setItem('user', JSON.stringify({ userID, firstName, lastName, email, dateOfBirth }));
+
                 Alert.alert('Success', 'You are now signed in!');
                 signIn();
             } else {
