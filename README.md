@@ -57,7 +57,7 @@ to ensure that the proper dependencies are in the package.
    brew services start mysql
    mysql.server start
    ```
-2. Create the required database per the Google Doc instructions
+2. Create the required database per the included zipped file
 3. Configure the backend to connect to the database:
     - Update the `.env` file in the backend directory with your database credentials:
       ```
@@ -66,6 +66,7 @@ to ensure that the proper dependencies are in the package.
       DB_PASSWORD=<your-password> # Only if you have setup your MySQL server to use a password - otherwise leave it blank
       DB_NAME=FitnessTrackDB
       ```
+4. Delete the database.sql.gz from the CalCenter root directory
 
 ---
 
