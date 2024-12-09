@@ -43,6 +43,30 @@ app.post('/login', (req, res) => {
   });
 });
 
+// Signup endpoint
+app.post('/signup', (req, res) => {
+  const { email, password, firstName, lastName, dateOfBirth } = req.body;
+
+  if (!email || !password || !firstName || !lastName || !dateOfBirth) {
+    return res.status(400).json({ error: 'Please enter all fields'});
+  }
+
+  // Formatted date to match the required format for the query
+  const formattedDate = new Date(dateOfBirth).toISOString().split('T')[0];
+  const query = 'INSERT INTO Users (Fname, Lname, Email, Password, DateOfBirth) VALUES (?, ?, ?, ?, ?)';
+  console.log(query);
+  db.execute(query, [firstName, lastName, email, password, formattedDate], (err, results) => {
+    if (err) {
+      console.error('Error executing query:', err);
+      if (err.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ error: 'Account with that email already exists' });
+      }
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    return res.status(201).json({ success: true, message: 'User registered successfully!' });
+  });
+})
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
