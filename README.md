@@ -28,8 +28,8 @@ Before setting up the project, ensure you have the following installed:
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/<your-username>/<repo-name>.git
-cd <repo-name>
+git clone git@github.com:Donald-Tan/CalCenterv2.git
+cd CalCenterv2
 ```
 
 ### 2. Install Dependencies
