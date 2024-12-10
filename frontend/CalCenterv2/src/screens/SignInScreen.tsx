@@ -29,7 +29,7 @@ const SignInScreen = ({ navigation }) => {
             }
         } catch (error) {
             console.error(error);
-            Alert.alert('Error', 'Please try again');
+            Alert.alert('Error', 'Please try again!');
         }
     };
 
