@@ -67,7 +67,7 @@ CREATE TABLE `ActivityLogs` (
 
 LOCK TABLES `ActivityLogs` WRITE;
 /*!40000 ALTER TABLE `ActivityLogs` DISABLE KEYS */;
-INSERT INTO `ActivityLogs` VALUES (1,1,'2024-11-20',1.5),(1,4,'2024-11-25',1),(2,2,'2024-11-21',2),(2,5,'2024-11-25',2),(3,3,'2024-11-22',1),(4,6,'2024-11-26',1.5);
+INSERT INTO `ActivityLogs` VALUES (1,1,'2024-11-20',1.5),(1,4,'2024-11-25',1),(2,2,'2024-11-21',2),(2,5,'2024-11-25',2),(3,3,'2024-11-22',1),(4,6,'2024-11-26',1.5),(8,1,'2024-12-09',1),(8,3,'2024-12-09',3),(8,5,'2024-12-09',2.5);
 /*!40000 ALTER TABLE `ActivityLogs` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -284,7 +284,7 @@ CREATE TABLE `Users` (
   `DateOfBirth` date NOT NULL,
   PRIMARY KEY (`UserID`),
   UNIQUE KEY `Email` (`Email`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -293,7 +293,7 @@ CREATE TABLE `Users` (
 
 LOCK TABLES `Users` WRITE;
 /*!40000 ALTER TABLE `Users` DISABLE KEYS */;
-INSERT INTO `Users` VALUES (1,'John','Doe','john.doe@example.com','password123','1990-05-15'),(2,'Jane','Smith','jane.smith@example.com','securepassword','1985-09-22'),(3,'Alice','Brown','alice.brown@example.com','mypassword','1992-03-10'),(4,'David','Taylor','david.taylor@example.com','pass123','1988-12-05'),(5,'Sarah','Miller','sarah.miller@example.com','mypwd456','1995-07-19'),(6,'Chris','Moore','chris.moore@example.com','secure789','1980-10-25'),(7,'Admin','Account','Admin@example.com','Password','1999-12-31');
+INSERT INTO `Users` VALUES (1,'John','Doe','john.doe@example.com','password123','1990-05-15'),(2,'Jane','Smith','jane.smith@example.com','securepassword','1985-09-22'),(3,'Alice','Brown','alice.brown@example.com','mypassword','1992-03-10'),(4,'David','Taylor','david.taylor@example.com','pass123','1988-12-05'),(5,'Sarah','Miller','sarah.miller@example.com','mypwd456','1995-07-19'),(6,'Chris','Moore','chris.moore@example.com','secure789','1980-10-25'),(7,'Admin','Account','Admin@example.com','Password','1999-12-31'),(8,'Michael','Schwartz','Mjschwa@uw.edu','Password','2002-12-24'),(9,'Test','Function','Test@test.com','testing','2024-12-09'),(11,'Test','Signup','Test2@test.com','test','2024-12-09');
 /*!40000 ALTER TABLE `Users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -306,4 +306,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-12-08 20:46:39
+-- Dump completed on 2024-12-10  0:35:57
