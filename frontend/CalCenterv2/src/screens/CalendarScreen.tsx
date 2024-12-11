@@ -1,52 +1,107 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { format } from 'date-fns';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface Activity {
+  ActivityID: number;
+  ActivityName: string;
+  CaloriesPerHour: number;
+}
 
 const CalendarScreen = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [calories, setCalories] = useState(null);
-  const [exerciseCalculation, setExerciseCalculation] = useState(null);
   const [netCalories, setNetCalories] = useState(null);
+  const [totalCaloriesBurned, setTotalCaloriesBurned] = useState(null);
+  const [user, setUser] = useState<{ userID : String } > ({ userID: '' });
+  const [activities, setActivities] = useState<Activity[]>([]);
 
-  const handleDayPress = (day) => {
-    const date = new Date(day.timestamp); // Needs to be a Date object for formatting
+
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const parsedData = JSON.parse(userData);
+          setUser(parsedData);
+        }
+      } catch (error) {
+        Alert.alert('Error', 'Could not fetch user data');
+      }
+    };
+
+    const fetchActivities = async () => {
+      try {
+        const response = await axios.get('http://localhost:3000/activities');
+        setActivities(response.data.activities);
+      } catch (error) {
+        console.error('Error fetching activities:', error);
+        Alert.alert('Error', 'Failed to fetch activities. Please try again.');
+      }
+    };
+
+    fetchUserData().then(fetchActivities);
+  }, []);
+
+  const handleDayPress =  async (day: any) => {
+    const date = new Date(day.timestamp).toISOString().split('T')[0]; // Needs to be a Date object for formatting
     const formattedDate = format(date, 'MM/dd/yyyy');
     setSelectedDate(formattedDate);
 
-    // Constants to show functionality
-    setCalories(2000);
-    setExerciseCalculation(500); // Calories burned (depending on DB format)
+    try {
+      const response = await axios.get('http://localhost:3000/activity-logs', {
+        params: {
+          userID: user.userID,
+          date: date,
+        },
+      });
 
-    // This equation can be improved when we implement the functionality w/ DB
-    setNetCalories(calories - exerciseCalculation);
+      const activityLogs = response.data.loggedActivities;
+      console.log(activityLogs);
+
+      // Calorie burned calculation
+      const totalCaloriesBurned = activityLogs.reduce((total: number, log: any) => {
+        const matchingActivity = activities.find(a => a.ActivityID === log.ActivityID);
+        if (matchingActivity) {
+          return total + (matchingActivity.CaloriesPerHour * log.Duration);
+        }
+        return total;
+      }, 0);
+      setTotalCaloriesBurned(totalCaloriesBurned);
+    } catch (error) {
+      console.error('Error fetching activity logs: ', error);
+    }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Select a Date</Text>
-      
-      <Calendar
-        onDayPress={handleDayPress}
-        style={styles.calendar}
-        theme={{
-          textDayFontSize: 16,
-          textMonthFontSize: 20,
-          textDayHeaderFontSize: 16,
-        }}
-      />
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Select a Date</Text>
 
-      {selectedDate ? (
-        <View style={styles.resultsContainer}>
-          <Text style={styles.label}>Selected Date: {selectedDate}</Text>
-          <Text style={styles.label}>Caloric Intake: {calories !== null ? `${calories} kcal` : 'Loading...'}</Text>
-          <Text style={styles.label}>Exercise Calculation: {exerciseCalculation !== null ? `${exerciseCalculation} kcal` : 'Loading...'}</Text>
-          <Text style={styles.label}>Net Daily Calories: {netCalories !== null ? `${netCalories} kcal` : 'Loading...'}</Text>
-        </View>
-      ) : (
-        <Text style={styles.infoText}>Please select a date to view your data.</Text>
-      )}
-    </ScrollView>
+        <Calendar
+            onDayPress={handleDayPress}
+            style={styles.calendar}
+            theme={{
+              textDayFontSize: 16,
+              textMonthFontSize: 20,
+              textDayHeaderFontSize: 16,
+            }}
+        />
+
+        {selectedDate ? (
+            <View style={styles.resultsContainer}>
+              <Text style={styles.label}>Selected Date: {selectedDate}</Text>
+              <Text style={styles.label}>Caloric Intake: {calories !== null ? `${calories} kcal` : 'Loading...'}</Text>
+              <Text style={styles.label}>Net Daily Calories: {netCalories !== null ? `${netCalories} kcal` : 'Loading...'}</Text>
+              <Text style={styles.label}>Total Calories Burned: {totalCaloriesBurned !== null ? `${totalCaloriesBurned} kcal` : 'Loading...'}</Text>
+            </View>
+        ) : (
+            <Text style={styles.infoText}>Please select a date to view your data.</Text>
+        )}
+      </ScrollView>
   );
 };
 
