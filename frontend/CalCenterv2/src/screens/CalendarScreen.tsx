@@ -11,7 +11,7 @@ interface Activity {
   CaloriesPerHour: number;
 }
 
-// Calculate today's date in 'yyyy-MM-dd' format (local time)
+// Calculate today's date in 'yyyy-MM-dd' format
 const today = format(new Date(), 'yyyy-MM-dd');
 const CalendarScreen = () => {
   const [selectedDate, setSelectedDate] = useState('');
@@ -56,7 +56,7 @@ const CalendarScreen = () => {
       const response = await axios.get('http://localhost:3000/activity-logs', {
         params: {
           userID: user.userID,
-          date: date.toISOString().split('T')[0], // 'yyyy-MM-dd' format
+          date: date.toISOString().split('T')[0],
         },
       });
 
@@ -91,7 +91,7 @@ const CalendarScreen = () => {
             }}
             maxDate={today} // Disable future dates
             disableAllTouchEventsForDisabledDays={true} // Prevent interaction with disabled days
-            enableSwipeMonths={true} // Optional: Enable swiping between months
+            enableSwipeMonths={true}
         />
 
         {selectedDate ? (
