@@ -5,6 +5,12 @@ import { format, parse } from 'date-fns';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+interface Recipe {
+  RecipeID: number;
+  Name: string;
+  TotalCalories: number;
+}
+
 interface Activity {
   ActivityID: number;
   ActivityName: string;
@@ -15,8 +21,10 @@ interface Activity {
 const today = format(new Date(), 'yyyy-MM-dd');
 const CalendarScreen = () => {
   const [selectedDate, setSelectedDate] = useState('');
-  const [calories, setCalories] = useState<number | null>(null);
+  const [totalCaloriesGained, setTotalCaloriesGained] = useState<number | null>(null);
   const [netCalories, setNetCalories] = useState<number | null>(null);
+  const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
+  const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
   const [totalCaloriesBurned, setTotalCaloriesBurned] = useState<number | null>(null);
   const [user, setUser] = useState<{ userID: string }>({ userID: '' });
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -44,7 +52,19 @@ const CalendarScreen = () => {
       }
     };
 
-    fetchUserData().then(fetchActivities);
+    const fetchRecipes = async () => {
+      try {
+        const response = await axios.get('http://localhost:3000/recipes');
+        const recipes: Recipe[] = response.data;
+        setAllRecipes(recipes);
+        setFilteredRecipes(recipes);
+      } catch (error) {
+        console.error('Error fetching recipes:', error);
+        Alert.alert('Error', 'Failed to fetch recipes. Please try again.');
+      }
+    };
+
+    fetchUserData().then(fetchActivities).finally(fetchRecipes);
   }, []);
 
   const handleDayPress = async (day: any) => {
@@ -56,7 +76,7 @@ const CalendarScreen = () => {
       const response = await axios.get('http://localhost:3000/activity-logs', {
         params: {
           userID: user.userID,
-          date: date.toISOString().split('T')[0],
+          date: date.toISOString().split('T')[0]
         },
       });
 
@@ -71,6 +91,26 @@ const CalendarScreen = () => {
         return total;
       }, 0);
       setTotalCaloriesBurned(totalCaloriesBurned);
+
+      const intakeResponse = await axios.get('http://localhost:3000/recipe-logs', {
+        params: {
+          userID: user.userID,
+          date: date.toISOString().split('T')[0]
+        },
+      });
+
+      const recipeLogs = intakeResponse.data.loggedRecipes;
+
+      const totalCaloriesGained = recipeLogs.reduce((total: number, log: any) => {
+        const matchingRecipe = allRecipes.find(a => a.RecipeID === log.RecipeID);
+        if (matchingRecipe) {
+          return total + (matchingRecipe.TotalCalories * log.Quantity);
+        }
+        return total;
+      }, 0);
+      setTotalCaloriesGained(totalCaloriesGained);
+
+      setNetCalories(totalCaloriesGained - totalCaloriesBurned);
     } catch (error) {
       console.error('Error fetching activity logs: ', error);
       Alert.alert('Error', 'Failed to fetch activity logs. Please try again.');
@@ -97,9 +137,9 @@ const CalendarScreen = () => {
         {selectedDate ? (
             <View style={styles.resultsContainer}>
               <Text style={styles.label}>Selected Date: {selectedDate}</Text>
-              <Text style={styles.label}>Caloric Intake: {calories !== null ? `${calories} kcal` : 'Loading...'}</Text>
-              <Text style={styles.label}>Net Daily Calories: {netCalories !== null ? `${netCalories} kcal` : 'Loading...'}</Text>
+              <Text style={styles.label}>Caloric Intake: {totalCaloriesGained !== null ? `${totalCaloriesGained} kcal` : 'Loading...'}</Text>
               <Text style={styles.label}>Total Calories Burned: {totalCaloriesBurned !== null ? `${totalCaloriesBurned} kcal` : 'Loading...'}</Text>
+              <Text style={styles.label}>Net Daily Calories: {netCalories !== null ? `${netCalories} kcal` : 'Loading...'}</Text>
             </View>
         ) : (
             <Text style={styles.infoText}>Please select a date to view your data.</Text>

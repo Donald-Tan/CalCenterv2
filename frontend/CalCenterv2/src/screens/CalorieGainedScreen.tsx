@@ -1,115 +1,175 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  StyleSheet,
-  Button,
-  Alert,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, FlatList, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import axios from 'axios';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { format } from "date-fns";
 
-interface Food {
-  id: string;
-  name: string;
-  calories: number;
+interface Recipe {
+  RecipeID: number;
+  Name: string;
+  TotalCalories: number;
+}
+
+interface LoggedRecipe {
+  RecipeID: number;
+  Name: string;
+  Quantity: number;
 }
 
 const CalorieGainedScreen = () => {
-  const [foodName, setFoodName] = useState('');
-  const [calorieCount, setCalorieCount] = useState('');
-  const [loggedFoods, setLoggedFoods] = useState<Food[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
+  const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
+  const [loggedRecipes, setLoggedRecipes] = useState<LoggedRecipe[]>([]);
+  const [user, setUser] = useState<{ userID: string }>({ userID: '' });
 
-  // Define foodDatabase with an index signature
-  const foodDatabase: { [key: string]: number } = {
-    apple: 95,
-    banana: 105,
-    pizza: 285,
-  };
+  const currentDate = new Date();
+  const formattedDate = format(currentDate, 'yyyy-MM-dd');
 
-  // Simulating a function that fetches food calories from the database
-  const fetchFoodCaloriesFromDatabase = (foodName: string): number | null => {
-    // Convert foodName to lowercase to make it case-insensitive
-    const lowerCaseFoodName = foodName.toLowerCase();
-
-    // Return calories if food exists in database, otherwise null
-    return foodDatabase[lowerCaseFoodName] ?? null;
-  };
-
-  const handleAddFood = () => {
-    if (!foodName || !calorieCount) {
-      Alert.alert('Error', 'Please enter both food name and calorie count.');
-      return;
-    }
-
-    // Try to fetch the calories from the database
-    const caloriesFromDatabase = fetchFoodCaloriesFromDatabase(foodName);
-
-    let calories = 0;
-
-    if (caloriesFromDatabase !== null) {
-      // If the food is in the database, use its calorie value
-      calories = caloriesFromDatabase;
-    } else {
-      // Otherwise, use the user's input for calories
-      calories = parseInt(calorieCount);
-    }
-
-    if (isNaN(calories)) {
-      Alert.alert('Error', 'Please enter a valid calorie count.');
-      return;
-    }
-
-    const newFood: Food = {
-      id: Date.now().toString(),
-      name: foodName,
-      calories,
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const parsedData = JSON.parse(userData);
+          setUser(parsedData);
+        }
+      } catch (error) {
+        Alert.alert('Error', 'Could not fetch user data');
+      }
     };
 
-    setLoggedFoods((prevFoods) => [...prevFoods, newFood]);
-    setFoodName('');
-    setCalorieCount('');
+    const fetchRecipes = async () => {
+      try {
+        const response = await axios.get('http://localhost:3000/recipes');
+        const recipes: Recipe[] = response.data;
+        setAllRecipes(recipes);
+        setFilteredRecipes(recipes);
+      } catch (error) {
+        console.error('Error fetching recipes:', error);
+        Alert.alert('Error', 'Failed to fetch recipes. Please try again.');
+      }
+    };
+
+    fetchUserData().then(fetchRecipes);
+  }, []);
+
+  useEffect(() => {
+    if (user.userID) {
+      const fetchLoggedRecipes = async () => {
+        try {
+          const response = await axios.get('http://localhost:3000/recipe-logs', {
+            params: {
+              userID: user.userID,
+              date: formattedDate
+            }
+          });
+          setLoggedRecipes(response.data.loggedRecipes);
+        } catch (error) {
+          console.error('Error fetching logged recipes:', error);
+          Alert.alert('Error', 'Failed to fetch logged recipes. Please try again.');
+        }
+      };
+      fetchLoggedRecipes();
+    }
+  }, [user.userID]);
+
+  useEffect(() => {
+    if (!searchTerm) {
+      setFilteredRecipes(allRecipes);
+    } else {
+      const lowerSearch = searchTerm.toLowerCase();
+      const filtered = allRecipes.filter(r =>
+          r.Name.toLowerCase().includes(lowerSearch)
+      );
+      setFilteredRecipes(filtered);
+    }
+  }, [searchTerm, allRecipes]);
+
+  const handleAddRecipe = async (recipe: Recipe) => {
+    if (loggedRecipes.some(r => r.Name === recipe.Name)) {
+      Alert.alert('Info', 'This recipe is already logged.');
+      return;
+    }
+
+    try {
+      await axios.post('http://localhost:3000/recipe-logs', {
+        UserID: user.userID,
+        RecipeID: recipe.RecipeID,
+        Date: formattedDate,
+        Quantity: 1
+      });
+
+      console.log(recipe.RecipeID.toString(), recipe.Name, recipe.TotalCalories);
+      // Update local state w/ server response
+      setLoggedRecipes(prev => [
+        ...prev,
+        { RecipeID: recipe.RecipeID, Name: recipe.Name, Quantity: 1 }
+      ]);
+      console.log(loggedRecipes);
+    } catch (error) {
+      console.error('Error adding intake to log:', error);
+      Alert.alert('Error', 'Failed to log the intake. Please try again.');
+    }
   };
 
-  const totalCalories = loggedFoods.reduce((sum, food) => sum + food.calories, 0);
+  const totalCalories = loggedRecipes.reduce((total: number, log: any) => {
+    const matchingRecipe = allRecipes.find(a => a.RecipeID === log.RecipeID);
+    if (matchingRecipe) {
+      return total + (matchingRecipe.TotalCalories * log.Quantity);
+    }
+    return total;
+  }, 0);
 
+  // Function to get the calories gained for a logged recipe
+  const getCalories = (recipeID: number, quantity: number): number => {
+    const recipe = allRecipes.find(a => a.RecipeID === recipeID);
+    if (!recipe) return 0;
+    return recipe.TotalCalories * quantity;
+  };
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Calories Gained</Text>
-
-      {/* Total calories */}
-      <Text style={styles.totalText}>Total Calories: {totalCalories} kcal</Text>
-
-      {/* Input fields */}
-      <TextInput
-        style={styles.input}
-        placeholder="Enter food name"
-        value={foodName}
-        onChangeText={setFoodName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Enter calorie count (if known)"
-        value={calorieCount}
-        onChangeText={setCalorieCount}
-        keyboardType="numeric"
-      />
-      <Button title="Add Food" onPress={handleAddFood} />
-
-      {/* Logged foods */}
-      <FlatList
-        data={loggedFoods}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Text style={styles.itemText}>
-            {item.name}: {item.calories} kcal
-          </Text>
-        )}
-        style={styles.list}
-      />
-    </View>
+      <View style={styles.container}>
+        <Text style={styles.title}>Calories Gained</Text>
+        <Text style={styles.totalText}>Total Calories: {totalCalories} kcal</Text>
+        <TextInput
+            style={styles.input}
+            placeholder="Search for a recipe..."
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+        />
+        <FlatList
+            data={filteredRecipes}
+            keyExtractor={(item) => item.RecipeID.toString()}
+            renderItem={({ item }) => (
+                <TouchableOpacity style={styles.recipeItem} onPress={() => handleAddRecipe(item)}>
+                  <Text style={styles.itemText}>
+                    {item.Name} ({item.TotalCalories} kcal)
+                  </Text>
+                </TouchableOpacity>
+            )}
+            style={styles.list}
+        />
+        <Text style={styles.sectionTitle}>Logged Recipes</Text>
+        <FlatList
+            data={loggedRecipes}
+            keyExtractor={(_, item) => item.toString()}
+            renderItem={({ item }) => {
+                const caloriesGained = getCalories(item.RecipeID, item.Quantity);
+                const recipy = allRecipes.find(a => a.RecipeID === item.RecipeID);
+                return (
+                  <Text style={styles.itemText}>
+                    {recipy ? recipy.Name : "Unknown Recipe"}{' '}
+                    ({item.Quantity}x): {caloriesGained} kcal
+                  </Text>
+                );
+            }}
+            style={styles.list}
+        />
+      </View>
   );
 };
+
+export default CalorieGainedScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -127,6 +187,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
   },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginVertical: 10,
+  },
   input: {
     height: 40,
     borderColor: '#cccccc',
@@ -139,9 +204,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginVertical: 5,
   },
+  recipeItem: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 10,
+  },
   list: {
-    marginTop: 20,
+    marginBottom: 20,
   },
 });
-
-export default CalorieGainedScreen;
