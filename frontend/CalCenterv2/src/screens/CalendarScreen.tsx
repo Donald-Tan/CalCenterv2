@@ -11,15 +11,15 @@ interface Activity {
   CaloriesPerHour: number;
 }
 
+// Calculate today's date in 'yyyy-MM-dd' format
+const today = format(new Date(), 'yyyy-MM-dd');
 const CalendarScreen = () => {
   const [selectedDate, setSelectedDate] = useState('');
-  const [calories, setCalories] = useState(null);
-  const [netCalories, setNetCalories] = useState(null);
-  const [totalCaloriesBurned, setTotalCaloriesBurned] = useState(null);
-  const [user, setUser] = useState<{ userID : String } > ({ userID: '' });
+  const [calories, setCalories] = useState<number | null>(null);
+  const [netCalories, setNetCalories] = useState<number | null>(null);
+  const [totalCaloriesBurned, setTotalCaloriesBurned] = useState<number | null>(null);
+  const [user, setUser] = useState<{ userID: string }>({ userID: '' });
   const [activities, setActivities] = useState<Activity[]>([]);
-
-
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -47,10 +47,9 @@ const CalendarScreen = () => {
     fetchUserData().then(fetchActivities);
   }, []);
 
-  const handleDayPress =  async (day: any) => {
+  const handleDayPress = async (day: any) => {
     const date = parse(day.dateString, 'yyyy-MM-dd', new Date()); // Needs to be a Date object for formatting
     const formattedDate = format(date, 'MM/dd/yyyy');
-    console.log(formattedDate);
     setSelectedDate(formattedDate);
 
     try {
@@ -74,6 +73,7 @@ const CalendarScreen = () => {
       setTotalCaloriesBurned(totalCaloriesBurned);
     } catch (error) {
       console.error('Error fetching activity logs: ', error);
+      Alert.alert('Error', 'Failed to fetch activity logs. Please try again.');
     }
   };
 
@@ -89,6 +89,9 @@ const CalendarScreen = () => {
               textMonthFontSize: 20,
               textDayHeaderFontSize: 16,
             }}
+            maxDate={today} // Disable future dates
+            disableAllTouchEventsForDisabledDays={true} // Prevent interaction with disabled days
+            enableSwipeMonths={true}
         />
 
         {selectedDate ? (
