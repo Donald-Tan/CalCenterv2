@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Calendar } from 'react-native-calendars';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -48,20 +48,20 @@ const CalendarScreen = () => {
   }, []);
 
   const handleDayPress =  async (day: any) => {
-    const date = new Date(day.timestamp).toISOString().split('T')[0]; // Needs to be a Date object for formatting
+    const date = parse(day.dateString, 'yyyy-MM-dd', new Date()); // Needs to be a Date object for formatting
     const formattedDate = format(date, 'MM/dd/yyyy');
+    console.log(formattedDate);
     setSelectedDate(formattedDate);
 
     try {
       const response = await axios.get('http://localhost:3000/activity-logs', {
         params: {
           userID: user.userID,
-          date: date,
+          date: date.toISOString().split('T')[0],
         },
       });
 
       const activityLogs = response.data.loggedActivities;
-      console.log(activityLogs);
 
       // Calorie burned calculation
       const totalCaloriesBurned = activityLogs.reduce((total: number, log: any) => {
