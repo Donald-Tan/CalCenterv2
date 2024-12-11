@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Button, TextInput, StyleSheet, Alert } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {format, parse} from "date-fns";
 
 interface Activity {
     ActivityID: number;
@@ -21,6 +22,9 @@ const CalorieLossScreen = () => {
     const [exerciseDuration, setExerciseDuration] = useState('');
     const [loggedActivities, setLoggedActivities] = useState<LoggedActivity[]>([]);
     const [user, setUser] = useState<{ userID: string }>({ userID: '' });
+
+    const currentDate = new Date();
+    const formattedDate = format(currentDate, 'yyyy-MM-dd');
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -52,12 +56,10 @@ const CalorieLossScreen = () => {
         if (user.userID) {
             const fetchLoggedActivities = async () => {
                 try {
-                    const today = new Date().toISOString().split('T')[0];
-                    console.log(user.userID, today);
                     const response = await axios.get('http://localhost:3000/activity-logs', {
                         params: {
                             userID: user.userID,
-                            date: today
+                            date: formattedDate
                         }
                     });
                     setLoggedActivities(response.data.loggedActivities); // Assuming this returns [{ActivityID, Duration, Date}, ...]
@@ -84,12 +86,11 @@ const CalorieLossScreen = () => {
 
         // Calculate on client side
         const caloriesBurned = selectedActivity.CaloriesPerHour * duration;
-
         try {
             await axios.post('http://localhost:3000/activity-logs', {
                 UserID: user.userID,
                 ActivityID: selectedActivity.ActivityID,
-                Date: new Date().toISOString().split('T')[0],
+                Date: formattedDate,
                 Duration: duration
             });
 
