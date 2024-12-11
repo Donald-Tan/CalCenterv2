@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import {View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { AuthContext } from '@/App';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';

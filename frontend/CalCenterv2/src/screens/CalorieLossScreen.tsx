@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Button, TextInput, StyleSheet, Alert } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {format, parse} from "date-fns";
+import { format } from "date-fns";
 
 interface Activity {
     ActivityID: number;
@@ -62,7 +62,7 @@ const CalorieLossScreen = () => {
                             date: formattedDate
                         }
                     });
-                    setLoggedActivities(response.data.loggedActivities); // Assuming this returns [{ActivityID, Duration, Date}, ...]
+                    setLoggedActivities(response.data.loggedActivities);
                 } catch (error) {
                     console.error('Error fetching logged activities:', error);
                     Alert.alert('Error', 'Failed to fetch logged activities. Please try again.');
@@ -84,8 +84,6 @@ const CalorieLossScreen = () => {
             return;
         }
 
-        // Calculate on client side
-        const caloriesBurned = selectedActivity.CaloriesPerHour * duration;
         try {
             await axios.post('http://localhost:3000/activity-logs', {
                 UserID: user.userID,

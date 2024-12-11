@@ -5,6 +5,7 @@ import CalendarScreen from '../screens/CalendarScreen';
 import CalorieGainedScreen from '../screens/CalorieGainedScreen';
 import CalorieLossScreen from '../screens/CalorieLossScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import RecipeScreen from "@/src/screens/RecipeScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -25,6 +26,11 @@ export default function AppTabs() {
                 name="Calorie Loss"
                 component={CalorieLossScreen}
                 options={{ title: 'Calorie Loss' }}
+            />
+            <Tab.Screen
+                name="Recipes"
+                component={RecipeScreen}
+                options={{ title: 'Recipes' }}
             />
             <Tab.Screen
                 name="Profile"

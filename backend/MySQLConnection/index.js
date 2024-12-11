@@ -124,7 +124,94 @@ app.get('/activity-logs', async (req, res) => {
   }
 });
 
+// Get all nutrition items
+app.get('/nutrition', async (req, res) => {
+  try {
+    const [results] = await pool.execute('SELECT FoodID, Food, Kilocalories FROM Nutrition');
+    res.json({ ingredients: results });
+  } catch (err) {
+    console.error('Error fetching nutrition items:', err.message);
+    res.status(500).json({ error: 'Failed to fetch nutrition items' });
+  }
+});
 
+// Create a new recipe and link it to user and ingredients
+app.post('/created-recipe', async (req, res) => {
+  const { UserID, recipeName, description, ingredients } = req.body;
+  if (!UserID || !recipeName || !Array.isArray(ingredients) || ingredients.length === 0) {
+    return res.status(400).json({ error: 'UserID, recipeName, and a non-empty ingredients array are required' });
+  }
+
+  const insertRecipe = 'INSERT INTO Recipe (Name, Description, UserID) VALUES (?, ?, ?)';
+  const createdRecipe = 'INSERT INTO CreatedRecipe (UserID, RecipeID) VALUES (?, ?)';
+  const containedIngredients = 'INSERT INTO ContainedNutrition (RecipeID, NutritionID, Quantity) VALUES ?';
+  try {
+    // Insert recipe
+    const [recipeResult] = await pool.execute(insertRecipe, [recipeName, description || '', UserID]);
+    const newRecipeID = recipeResult.insertId;
+
+    // Link the new recipe
+    await pool.execute(createdRecipe, [UserID, newRecipeID]);
+
+    // Log all contained ingredients
+    const ingredientsMap = ingredients.map(item => [newRecipeID, item.FoodID, item.Quantity]);
+    await pool.query(containedIngredients, [ingredientsMap]);
+    res.status(201).json({ success: true, message: 'Recipe created successfully', RecipeID: newRecipeID });
+  } catch (err) {
+    console.error('Error creating recipe:', err.message);
+    res.status(500).json({ error: 'Failed to create recipe' });
+  }
+});
+
+// Retrieve recipes for CalorieGainedScreen
+app.get('/recipes', async (req, res) => {
+  const query = `
+    SELECT r.RecipeID, r.Name, IFNULL(SUM(n.Kilocalories * cn.Quantity), 0) AS TotalCalories
+    FROM Recipe r
+    LEFT JOIN ContainedNutrition cn ON r.RecipeID = cn.RecipeID
+    LEFT JOIN Nutrition n ON cn.NutritionID = n.FoodID
+    GROUP BY r.RecipeID, r.Name
+    ORDER BY r.Name ASC
+  `;
+
+  try {
+    const [results] = await pool.execute(query);
+    res.json(results);
+  } catch (err) {
+    console.error('Error fetching recipes:', err.message);
+    res.status(500).json({ error: 'Failed to fetch recipes' });
+  }
+});
+
+// Log activity to RecipeLogs table
+app.post('/recipe-logs', async (req, res) => {
+  const { UserID, RecipeID, Date, Quantity } = req.body;
+  const query = 'INSERT INTO RecipeLogs (UserID, RecipeID, Date, Quantity) VALUES (?, ?, ?, ?)';
+  try {
+    await pool.execute(query, [UserID, RecipeID, Date, Quantity]);
+    res.status(201).json({ success: true, message: 'Intake logged successfully' });
+  } catch (err) {
+    console.error('Error logging intake:', err);
+    res.status(500).json({ error: 'Failed to log intake' });
+  }
+});
+
+// Fetch logged recipes for specific date
+app.get('/recipe-logs', async (req, res) => {
+  const { userID, date } = req.query;
+  if (!userID || !date) {
+    return res.status(400).json({ error: 'userID and date are required' });
+  }
+  // Selects all entries from current date and with the correct user id
+  const query = 'SELECT * FROM RecipeLogs WHERE UserID = ? AND Date = ?';
+  try {
+    const [results] = await pool.execute(query, [userID, date]);
+    res.status(200).json({ success: true, loggedRecipes: results });
+  } catch (err) {
+    console.error('Error fetching logged recipes:', err);
+    res.status(500).json({ error: 'Failed to retrieve logged recipes' });
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
